@@ -124,7 +124,7 @@ def ura(ms, md, p, m, chi, beta, rin, rout, r):
     rout = outer radius of the disc [au]
     r = radius [au]'''
     
-    return 2 * m * chi * beta**(-1/2) * q(ms, md, p, rin, rout, r)**2 * omega(ms,r) * r
+    return 8 * m * chi * beta**(-1/2) * q(ms, md, p, rin, rout, r)**2 * omega(ms,r) * r
 
 
 
@@ -141,11 +141,11 @@ def upha(ms, md, p, m, chi, beta, rin, rout, r):
     rout = outer radius of the disc [au]
     r = radius [au]'''
     
-    return - (m * chi * beta**(-1/2))/2  * q(ms, md, p, rin, rout, r) * omega(ms,r) * r
+    return - (m * chi * beta**(-1/2))  * q(ms, md, p, rin, rout, r) * omega(ms,r) * r
 
 
 
-def ur(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha):
+def ur(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha, off):
     
     '''2D radial velocity perturbation [km/s] in polar coordinates
     grid_radius = radial grid [au]
@@ -161,11 +161,11 @@ def ur(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha):
     alpha = pitch angle of the spiral [rad]'''
     
     return - ura(ms, md, p, m, chi, beta, rin, rout, grid_radius)  * np.sin(
-        m * grid_angle + m/np.tan(alpha) * np.log(grid_radius))
+        m * grid_angle + m/np.tan(alpha) * np.log(grid_radius) + off)
 
 
 
-def uph(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha):
+def uph(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha, off):
     
     '''2D azimuthal velocity perturbation [km/s] in polar coordinates
     grid_radius = radial grid [au]
@@ -187,13 +187,13 @@ def uph(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha):
     vec = np.zeros([grid_radius.shape[0],grid_radius.shape[1]])
     vp1 = upha(ms, md, p, m, chi, beta, rin, rout, rin)
     for i in range(grid_radius.shape[1]):
-        vec[:,i] = bs[:] - vp1* x**(3/2 + p) /rin * np.sin(m*an[i] + phase[:])
+        vec[:,i] = bs[:] - vp1* x**(3/2 + p) /rin * np.sin(m*an[i] + phase[:] + off)
         
     return vec
 
 
 
-def momentone(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha, incl):
+def momentone(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha, incl, off):
     
     '''Moment one map / projected velocity field towards the line of sight [km/s]
     grid_radius = radial grid [au]
@@ -210,9 +210,9 @@ def momentone(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha
     incl = inclination angle [rad]
     NB: The moment one map is given in polar coordinates, the disk is face on and the observer is rotated by an angle incl'''
     
-    return uph(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha) * np.cos(
+    return uph(grid_radius, grid_angle, ms, md, p, m, chi, beta, rin, rout, alpha, off) * np.cos(
         grid_angle) * np.sin(incl) + ur(grid_radius, grid_angle, ms, md, p, m, chi, beta,
-        rin, rout, alpha) * np.sin(grid_angle) * np.sin(incl)
+        rin, rout, alpha, off) * np.sin(grid_angle) * np.sin(incl)
 
 
 
@@ -323,3 +323,105 @@ def amplitude_central_channel(grid_radius, grid_angle, ms, md, p, m, chi, beta, 
                 wigg[i] = grid_angle[0,:][j]
     
     return np.std(wigg)
+
+
+
+
+def urC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off):
+    
+    '''2D radial velocity perturbation [km/s] in polar coordinates
+    gx = x grid [au]
+    gy = y grid [au] 
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    alpha = pitch angle of the spiral [rad]'''
+    
+    
+    grid_radius = np.sqrt(gx**2 + gy**2)
+    car = np.linspace(-rout,rout,gx.shape[0])
+    grid_angle = np.zeros([len(car),len(car)])
+    for i in range(len(car)):
+        for j in range(len(car)):
+            grid_angle[i,j] = math.atan2(car[i], car[j])
+    return - ura(ms, md, p, m, chi, beta, rin, rout, grid_radius)  * np.sin(
+        m * grid_angle + m/np.tan(alpha) * np.log(grid_radius) + off)
+
+
+
+def uphC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off):
+    
+    '''2D azimuthal velocity perturbation [km/s] in polar coordinates
+    gx = x grid [au]
+    gy = y grid [au] 
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    alpha = pitch angle of the spiral [rad]'''
+    
+    # x = np.linspace(np.min(grid_radius),np.max(grid_radius),grid_radius.shape[0]/2)
+    #phase = m / np.tan(alpha)  * np.log(x)
+    #an = np.linspace(-np.pi,np.pi,grid_radius.shape[1])
+    #bs = basicspeed(x, 0.001, md, p, rin, rout, ms)
+    #vec = np.zeros([grid_radius.shape[0],grid_radius.shape[1]])
+    #vp1 = upha(ms, md, p, m, chi, beta, rin, rout, rin)
+    #for i in range(grid_radius.shape[1]):
+    #   vec[:,i] = bs[:] - vp1* x**(3/2 + p) /rin * np.sin(m*an[i] + phase[:] + off)
+    
+    grid_radius = np.sqrt(gx**2 + gy**2)
+    car = np.linspace(-rout,rout,gx.shape[0])
+    grid_angle = np.zeros([len(car),len(car)])
+    for i in range(len(car)):
+        for j in range(len(car)):
+            grid_angle[i,j] = math.atan2(car[i], car[j])
+    
+    radii = np.linspace(np.min(grid_radius), np.max(grid_radius), 1000)
+    rc = basicspeed(radii, 1e-3, md, p, rin, rout, ms)
+    vec = - upha(ms, md, p, m, chi, beta, rin, rout, grid_radius) + rc[
+        ((grid_radius - np.min(grid_radius))/(radii[1] - radii[0])).astype(int)] 
+    return vec
+
+
+
+def momentoneC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, incl, off):
+    
+    '''Moment one map / projected velocity field towards the line of sight [km/s]
+    gx = x grid [au]
+    gy = y grid [au] 
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    alpha = pitch angle of the spiral [rad]
+    incl = inclination angle [rad]
+    NB: The moment one map is given in polar coordinates, the disk is face on and the observer is rotated by an angle incl'''
+    
+    grid_radius = np.sqrt(gx**2 + gy**2)
+    car = np.linspace(-rout,rout,gx.shape[0])
+    grid_angle = np.zeros([len(car),len(car)])
+    for i in range(len(car)):
+        for j in range(len(car)):
+            grid_angle[i,j] = math.atan2(car[i], car[j])
+    
+    M1 = uphC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off) * np.cos(
+        grid_angle) * np.sin(incl) + urC(gx, gy, ms, md, p, m, chi, beta,
+        rin, rout, alpha, off) * np.sin(grid_angle) * np.sin(incl)
+    for i in range(M1.shape[0]):
+        for j in range(M1.shape[0]):
+            if(grid_radius[i,j] > rout):
+                M1[i,j] = -np.inf
+    return M1
