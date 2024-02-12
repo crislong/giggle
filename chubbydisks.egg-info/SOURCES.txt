@@ -1,8 +1,0 @@
-README.md
-setup.py
-chubbydisks/__init__.py
-chubbydisks/myfunctions.py
-chubbydisks.egg-info/PKG-INFO
-chubbydisks.egg-info/SOURCES.txt
-chubbydisks.egg-info/dependency_links.txt
-chubbydisks.egg-info/top_level.txt

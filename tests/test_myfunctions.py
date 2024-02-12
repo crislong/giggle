@@ -1,4 +1,4 @@
-from chubbydisks import myfunctions
+from giggle import myfunctions
 
 
 def test_omega():

@@ -1,5 +1,4 @@
 #
-# ALL FUNCTIONS
 # Cristiano Longarini
 #
 # Units:
@@ -124,7 +123,7 @@ def ura(ms, md, p, m, chi, beta, rin, rout, r):
     rout = outer radius of the disc [au]
     r = radius [au]'''
     
-    return 8 * m * chi * beta**(-1/2) * q(ms, md, p, rin, rout, r)**2 * omega(ms,r) * r
+    return 2 * m * chi * beta**(-1/2) * q(ms, md, p, rin, rout, r)**2 * omega(ms,r) * r
 
 
 
@@ -141,7 +140,7 @@ def upha(ms, md, p, m, chi, beta, rin, rout, r):
     rout = outer radius of the disc [au]
     r = radius [au]'''
     
-    return - (m * chi * beta**(-1/2))  * q(ms, md, p, rin, rout, r) * omega(ms,r) * r
+    return - (m * chi * beta**(-1/2)) / 2  * q(ms, md, p, rin, rout, r) * omega(ms,r) * r
 
 
 
@@ -243,8 +242,8 @@ def perturbed_sigma(grid_radius, grid_angle, p, rin, rout ,md, beta, m, alpha, p
     alpha = pitch angle of the spiral [rad]
     pos = angle of the spiral within the disc [rad]'''
     
-    return sigma(p, rin, rout ,md, grid_radius) + sigma(p, rin, rout ,md, grid_radius) * beta**(-1/2) * np.sin(m * 
-    grid_angle + m/np.tan(alpha) * np.log(grid_radius) + pos)
+    return   beta**(-1/2) * -np.cos(-(m * 
+    grid_angle + m/np.tan(alpha) * -np.log(grid_radius) + pos))
 
 
 
@@ -350,7 +349,7 @@ def urC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off):
         for j in range(len(car)):
             grid_angle[i,j] = math.atan2(car[i], car[j])
     return - ura(ms, md, p, m, chi, beta, rin, rout, grid_radius)  * np.sin(
-        m * grid_angle + m/np.tan(alpha) * np.log(grid_radius) + off)
+        m * grid_angle + m/np.tan(alpha) * -np.log(grid_radius) + off)
 
 
 
@@ -379,6 +378,7 @@ def uphC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off):
     #   vec[:,i] = bs[:] - vp1* x**(3/2 + p) /rin * np.sin(m*an[i] + phase[:] + off)
     
     grid_radius = np.sqrt(gx**2 + gy**2)
+    phase = m / np.tan(alpha) * -np.log(grid_radius)
     car = np.linspace(-rout,rout,gx.shape[0])
     grid_angle = np.zeros([len(car),len(car)])
     for i in range(len(car)):
@@ -387,7 +387,9 @@ def uphC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off):
     
     radii = np.linspace(np.min(grid_radius), np.max(grid_radius), 1000)
     rc = basicspeed(radii, 1e-3, md, p, rin, rout, ms)
-    vec = - upha(ms, md, p, m, chi, beta, rin, rout, grid_radius) + rc[
+    #vec = - upha(ms, md, p, m, chi, beta, rin, rout, grid_radius) * np.sin(m*grid_angle + phase + off)  + rc[
+     #   ((grid_radius - np.min(grid_radius))/(radii[1] - radii[0])).astype(int)] 
+    vec = np.sqrt( (G*ms/grid_radius)) * beta**(-0.5) / 2 * (md/ms) * np.sin(m*grid_angle + phase + off) + rc[
         ((grid_radius - np.min(grid_radius))/(radii[1] - radii[0])).astype(int)] 
     return vec
 
@@ -425,3 +427,137 @@ def momentoneC(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, incl, off):
             if(grid_radius[i,j] > rout):
                 M1[i,j] = -np.inf
     return M1
+
+def uraB(ms, md, p, m, chi, beta, rin, rout, r, n):
+    
+    '''Module of the radial velocity perturbation [km/s]
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    r = radius [au]'''
+    
+    return 8 * m * chi * beta**(-1/2) * q(ms, md, p, rin, rout, r)**2 * omega(ms,r) * r * (r/rin)**(-n/2)
+
+
+
+def uphaB(ms, md, p, m, chi, beta, rin, rout, r, n):
+    
+    '''Module of the azimuthal velocity perturbation [km/s]
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    r = radius [au]'''
+    
+    return - (m * chi * beta**(-1/2))  * q(ms, md, p, rin, rout, r) * omega(ms,r) * r * (r/rin)**(-n/2)
+
+def urCeta(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off, n):
+    
+    '''2D radial velocity perturbation [km/s] in polar coordinates
+    grid_radius = radial grid [au]
+    grid_angle = azimuthal grid [-np.pi,np.pi] [rad]
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    alpha = pitch angle of the spiral [rad]'''
+    
+    
+    grid_radius = np.sqrt(gx**2 + gy**2)
+    car = np.linspace(-rout,rout,gx.shape[0])
+    grid_angle = np.zeros([len(car),len(car)])
+    for i in range(len(car)):
+        for j in range(len(car)):
+            grid_angle[i,j] = math.atan2(car[i], car[j])
+    return - uraB(ms, md, p, m, chi, beta, rin, rout, grid_radius, n)  * np.sin(
+        m * grid_angle + m/np.tan(alpha) * np.log(grid_radius) + off)
+
+
+
+def uphCeta(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off, n):
+    
+    '''2D azimuthal velocity perturbation [km/s] in polar coordinates
+    grid_radius = radial grid [au]
+    grid_angle = azimuthal grid [-np.pi,np.pi] [rad]
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    alpha = pitch angle of the spiral [rad]'''
+    
+    # x = np.linspace(np.min(grid_radius),np.max(grid_radius),grid_radius.shape[0]/2)
+    #phase = m / np.tan(alpha)  * np.log(x)
+    #an = np.linspace(-np.pi,np.pi,grid_radius.shape[1])
+    #bs = basicspeed(x, 0.001, md, p, rin, rout, ms)
+    #vec = np.zeros([grid_radius.shape[0],grid_radius.shape[1]])
+    #vp1 = upha(ms, md, p, m, chi, beta, rin, rout, rin)
+    #for i in range(grid_radius.shape[1]):
+    #   vec[:,i] = bs[:] - vp1* x**(3/2 + p) /rin * np.sin(m*an[i] + phase[:] + off)
+    
+    grid_radius = np.sqrt(gx**2 + gy**2)
+    car = np.linspace(-rout,rout,gx.shape[0])
+    grid_angle = np.zeros([len(car),len(car)])
+    for i in range(len(car)):
+        for j in range(len(car)):
+            grid_angle[i,j] = math.atan2(car[i], car[j])
+    
+    radii = np.linspace(np.min(grid_radius), np.max(grid_radius), 1000)
+    rc = basicspeed(radii, 1e-3, md, p, rin, rout, ms)
+    vec = - uphaB(ms, md, p, m, chi, beta, rin, rout, grid_radius, n) + rc[
+        ((grid_radius - np.min(grid_radius))/(radii[1] - radii[0])).astype(int)] 
+    return vec
+
+
+
+def momentoneCeta(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, incl, off, n):
+    
+    '''Moment one map / projected velocity field towards the line of sight [km/s]
+    gx = x grid [au]
+    gy = y grid [au] 
+    ms = mass of the central object [msun]
+    md = mass of the disc [msun]
+    p = power law index of the density profile. \Sigma \propto r^(p)
+    m = number of the spiral arms
+    chi = heating factors (=1)
+    beta = cooling factor
+    rin = inner radius of the disc [au]
+    rout = outer radius of the disc [au]
+    alpha = pitch angle of the spiral [rad]
+    incl = inclination angle [rad]
+    NB: The moment one map is given in polar coordinates, the disk is face on and the observer is rotated by an angle incl'''
+    
+    grid_radius = np.sqrt(gx**2 + gy**2)
+    car = np.linspace(-rout,rout,gx.shape[0])
+    grid_angle = np.zeros([len(car),len(car)])
+    for i in range(len(car)):
+        for j in range(len(car)):
+            grid_angle[i,j] = math.atan2(car[i], car[j])
+    
+    M1 = uphCeta(gx, gy, ms, md, p, m, chi, beta, rin, rout, alpha, off, n) * np.cos(
+        grid_angle) * np.sin(incl) + urCeta(gx, gy, ms, md, p, m, chi, beta,
+        rin, rout, alpha, off, n) * np.sin(grid_angle) * np.sin(incl)
+    for i in range(M1.shape[0]):
+        for j in range(M1.shape[0]):
+            if(grid_radius[i,j] > rout):
+                M1[i,j] = -np.inf
+    return M1
+
+
+
